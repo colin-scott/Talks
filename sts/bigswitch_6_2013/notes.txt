@@ -1,0 +1,14 @@
+ - Make clear the use-case: simulator generates trace, not production logs
+ - Introduce the simulator sooner
+ - Motivate why we're talking about subtleties. Delta debugging is the easy
+   part, but getting the replay to work is our contribution
+ - Good questions woman: Rashmi
+ - What kinds of bugs do we catch? [mention headerspace analysis]
+ - Insert reference to tech report
+ - Parallel execution? -> thoughts
+ - Another optimization (Lamport): small number of actors: ignore events for
+   unrelated nodes.
+ - Shouldn't this be applicable to other distributed systems
+ - Two folks in the ParLab:
+     - Cindy Rubio González
+     - Anh Cuong Nguyen
