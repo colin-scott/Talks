@@ -12,3 +12,11 @@
  - Two folks in the ParLab:
      - Cindy Rubio González
      - Anh Cuong Nguyen
+
+--- From BSN Talk ---
+
+  - Key issue is not complexity, it's overnight parallel fuzzing and
+    minimization runs
+  - Status slide: improvements and open problems
+  - DD visualization too rigid?
+  - Call out Daylight
