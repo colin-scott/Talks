@@ -1,0 +1,273 @@
+I'm Colin, and today I'll be speaking about some work a long list of authors
+and I have been doing at UC Berkeley on troubleshooting SDN control
+software.
+
+The control plane of software-defined networks is a complex distributed
+system. There are multiple controllers that need to coordinate with eachother
+in the face of challenges like concurrency, asynchrony, and partial
+failure, in order to manage the configuration of potentially very large
+networks of dataplane devices.
+
+This complexity implies that developers of software-defined networks spend
+much of their time debugging problems. Many of these bugs arise from the
+distributed nature of the control software; bugs such as lack of mutual
+exclusion between nodes, violations of consistency, or deadlock. And these
+bugs are in addition to the everyday bugs developers normally encounter.
+
+To give you a concrete understanding of the kinds of bugs we're interested in,
+I'm going to quickly describe a known and now fixed bug in the Floodlight
+production controller. This is a Lamport time diagram, where time moves to the
+right, and space is in the vertical direction. Floodlight is a
+highly-available system, which means that some backup node keeps track of the
+liveness of the master. Now there are two triggering events for this bug:
+a link failure at a switch, followed by a crash of the master node. The switch
+asks the controllers what to do about the failed link, and only gets a
+response from the backup saying that it's not the master right now. At some
+point, the backup realizes that the master is dead, and takes over as master.
+And here we have our bug: the backup has forgotten that this link failure
+occurred, and as a result the switch continues forwarding packets out the dead
+link, and we get a persistent blackhole.
+
+The way that a bug like this is diagnosed today is by having a human--a
+software developer--manually examine log files containing a history of the
+events that lead up to the bug. It's their job to figure out which of these
+events triggered the bug.
+
+Going back to our example, it's important to note that the developer is *not*
+given a short, concise event history like this one.
+
+Instead, they're given logs from a large number of network devices, that may
+span several hours, and thousands of events. This is about as much as I could
+fit in on the screen, but in our experience these logs can take up 10s of
+gigabytes. So you can imagine that it would
+be pretty hard to figure out what's going on starting from this mess.
+Often at this point, the developer simply throws up their hands and waits for
+the bug to manifest again.
+
+So our goal is to make this troubleshooting process easier, and allow the
+developer to focus their effort on fixing the code itself, instead of first
+having to sift through those gigabytes of events to figure out what's triggering the bug in
+the first place. We become aware of this problem from our experiences in
+industry, at Nicira, BigSwitch, and Google, where we saw that the best
+engineers are spending a substantial amount of time trying to figure out
+what's triggering a bug in the first place. It's apparent
+that achiving this goal would be of great value to the industry.
+So our focus is here on developing practical techniques that
+are applicable to
+real software systems, of the kind that are deployed in production today.
+
+For the rest of this talk I'm going to try to convince you that we've
+identified an important problem with the way that troubleshooting is done
+today. Then I'll describe a system we've built, along with the techniques we
+apply within that system, to make the process of troubleshooting easier. I'll
+end by showing you how well the techniques work in practice.
+
+So we're going to achieve our goal by attempting to find a minimal sequence of
+events from that nasty log that I showed you earlier, that still triggers the
+bug. The idea here is that the smaller the set of events, the easier it will
+be for the developer to figure out what's going wrong. And crucially, we're
+going to try to find these events *without* making assumptions about the
+language or instrumentation of the software under test, and this will make it
+easy for us to apply this technique to production software systems.
+
+A bit more formally, what we're looking for is what we call a minimal
+causal sequence, or an `MCS', which is a subsequence of the event trace, such
+that if we replay this MCS, the invariant violation will still show up, which
+I show by this red cross here, but if we were to remove any single event `e`
+from this MCS, we would not longer see the invariant violation. The idea here
+is that if `e` is not needed to trigger the bug, then the developer shouldn't
+be looking at it.
+
+And recall that we're looking for this MCS from within that huge log of events
+I showed you earlier.
+
+And what we'd like to produce at the end is this trace is something that looks
+more like this.
+
+So now that I've explained our goal, I'll now show you how we achieve it. And
+I'll begin with a piece of context.
+
+There are a number of places you might find out about bugs. If you're lucky, a
+developer is finding out about this bug on their local machine, in a failed
+unit or integration test. These tests are already minimal, and it's usually fairly easy to figure out what's going
+wrong here, since this is often a problem in the developer's own code.
+
+If you're unlucky, you might find out about this bug in a production
+environment. And pretty much all of the companies we've talked to agree that
+this is too late.
+
+For that reason these companies employ teams of quality assurance engineers,
+whose job is to build testbeds in order to find bugs in the control software
+before they're released into production. This is the case that we're going to
+focus on today.
+
+A QA testbed behaves the same as a real network, where the control software on
+top here connects to the dataplane network, except that there's a centralized
+test coordinator that plays the role of god: injecting events into the testbed
+such as link failures, host migrations, or policy changes, and monitoring
+for invariant violations such as loops or blackholes in the network.
+Our approach is to insert our techniques into one of these existing QA
+testbeds. We happen to have built our own testbed, but that detail is
+relatively unimportant.
+
+We assume that the testbed gives us an execution history--a sequence of
+events--that includes external, (or input) events injected by the testbed,
+and that we have control over, as well as
+internal events, generated by the control software in reaction to those
+external events. And note that these internal events are *not* complete, since
+the testbed only observes what it can without modifying the control software.
+Unless we add instrumentation to the control software, this means that the
+only internal events we observe are messages sent between nodes.
+OK, and finally, we assume that this execution history contains an invariant
+violation at the end.
+
+To find the events that we're looking for, we apply the delta debugging
+algorithm. We split up the events in some way, and we ignore one of the
+partitions we split off. Then we use the testbed to replay the remaining
+inputs in the execution, and check at the end whether the invariant violation
+still occurs. If it does, that means we can ignore the events we pruned off,
+as they are not relevant to triggering the bug. We can then continue in this
+way, finding another way to split, ignoring some of the inputs, replaying the
+events, and checking whether the invariant violation is still there. If it's
+ever the case that the violation is not on either side of the partition, we can
+split the log into 4 parts and recurse.
+
+Now a key point is that the amount of minimization we're able to achieve here
+depends on both the way we select subsequences of events, and the way that we
+schedule events during replay of each subsequence. It's this latter
+point--scheduling the events--that's our contribution.
+
+The challenges that make scheduling hard again arise from the distributed
+nature of the control software. In particular we have to deal with asynchrony,
+divergence from the original execution, and non-determinism, and I'll describe
+these challenges next. It's worth noting that as you can probably tell, these
+challenges are quite general. Here we develop practical solutions that we're
+able to show work well in practice, but we do not currently provide guarentees
+on the results we produce.
+
+For our purposes, asynchrony means that when we try to replay a subsequence,
+it may be the case that some of the events in the testbed are reordered, either
+because nodes are operating at different speeds, or because messages are
+delayed.
+
+And this means that we need to carefully interleave the input events
+that we inject into the testbed, with the internal events that are triggered by
+the control software in reaction to those events. So going back to our
+example, we have two input events--the link failure, and the crash. All of
+the other events--the messages and state transitions--are the internal events.
+
+Now suppose that when we try to replay these two input events, because of
+asynchrony this port_status message from the switch to the controller happens
+to arrive earlier, such that the master has a chance to compute a new routing
+table and send it down to the switch. In this case the blackhole would be
+avoided, and we would have missed an opportunity for minimization.
+
+The way we cope with this challenge is by interposing on events within the
+testbed. We insert buffers at each of the communication channels, and this
+allows us to coerce a particular ordering of events, or at least the events
+that we're able to observe, that is consistent with the original execution
+order.
+
+The second challenge I mentioned was divergence from the original execution,
+which can manifest itself in a number of ways. I only have time to talk about
+one of these cases--the absense of internal events that we expected from the
+original execution.
+
+Going back to our example, suppose that we have two more inputs to schedule--a
+host migration and a policy change. And when we try to replay this
+subsequence, some of the internal events that we expected from the original
+execution no longer occur. This is a problem for us, because we're waiting for
+those causal dependencies to occur before we inject this host migration
+event.
+
+Our approach to dealing with this issue is to essentially replay each
+subsequence twice in order to infer which internal events are going to occur.
+We replay up to an input event, and we take a snapshot of the control
+software's state. We then
+allow the control software to play forward up until the next input event we
+need to inject. Finally we match up the internal events we observe with the
+internal events we expected from the original execution. We restore our
+snapshot, replay the interval, and repeat this process for the next interval.
+
+The final challenge I mentioned is non-determinism, which means that even if
+we give the exact same inputs to a single node, it may nonetheless produce a
+different output.
+
+The way we cope with this challenge is fairly straightforward. We just replay
+each subsequence multiple times, in the hope that the bug will be triggered at
+least once during this replays. If we assume that source of the
+non-determinism is a independently distributed random variable, then we can
+model the probability of us not finding the bug in one of these replays by
+this expontially diminishing function. And if the non-determinism is particularly
+acute, we can add instrumention to the control software to help mitigate it.
+
+To summarize our approach, we use a QA testbed to generate fuzz tests and
+later replay events. We apply the delta debugging algorithm to select
+subsequence of events, and throughout replay we cope with asynchrony by
+interposing on messages, we cope with divergence from the original execution
+by attempting to infer the absense of expected events, and we cope with
+non-determinism by replaying each subsequence multiple times.
+
+Now that I've outlined our approach, I'll show you how well these techniques
+work in practice.
+
+We evaluated our techniques on 5 open source SDN control platforms, where we
+ran the controllers on top of our testbed. For these case studies we try to
+measure two things. First we try to quantify the amount of minimization our
+techniques are able to achieve by looking at the size of the final output. And
+we do this for two classes of bugs: synthetic bugs that we inject into the
+control software, where we're able to easily show the boundaries of where our
+techniques work well and where they do not. We also evalaluate on bugs that
+are found in the wild to show that these techniques work in practice.
+Throughout these case studies we also try to qualitatively relay our
+experiences with whether these MCSes were useful for troubleshooting the bugs.
+
+We ran 17 case studies total, including 7 cases where we found previously
+unknown bugs by using our testbed to fuzz test each of the controllers, with
+at least one bug per controller. What I'm showing here is a bar
+chart where the size of the event trace is on the
+y-axis, and the case study is on the x-axis. The blue bars are the size of
+the original fuzz test, and the green bars are the size of the MCS produced by
+our techniques. The most apparent aspect of this chart is that in almost all of
+the cases we were able to achieve substantial minimization of the original
+execution, producing MCSes of between 2 and 20 events. There was one case
+where we weren't able to replay the original execution, and I'll descibe that
+later. Another point to make about this chart is that the original input sizes
+are actually somewhat conservative. For whatever reason we were able to
+trigger bugs fairly quickly, but you can imagine that fuzz tests from
+production QA testbeds could be many thousands of events long.
+
+We also compared our techniques to a naive replay approach, where you ignore
+internal events and only schedule according to the timestamps of input events.
+What we found was that this approach was often not even able to replay the
+original execution trace, especially for the discovered bugs which are what we
+really care about. This tells us that our techniques are buying us something.
+There was one case where naive replay actually did better, producing a 2 event
+MCS rather than a 7 event MCS. This was a case where the non-determinism was
+so acute that it was more effective to not try to schedule internal events.
+
+Most importantly, we found that except for two cases, all the MCSes we found were
+useful for debugging. There was the one case I mentioned earlier where we
+weren't able to replay the original execution, and this was because the root
+cause of the bug had to do with timers within the control software, which is
+outside the control of the testbed. There was another case where the MCS we
+produced was potentially misleading, since the events themselves did not
+directly trigger the bug, rather any I/O triggered the bug.
+
+Before ending, I'll briefly mention related work. *pause*. There's a lot of
+it. *pause*. In one sentence, we are the first to systematically consider
+concurrency during minimization, without making assumptions about the software
+under test.
+
+In conclusion, in this work we showed that it's possible to automatically
+minimize execution traces for SDN control software. We evaluated our
+techniques widely, on 5 open source SDN control platforms and one propietary
+platform. We have a full time engineer, Ahmed, who is out there in the
+audience, who is working on integrating our testbed into the ONOS controller.
+The source code for our testbed, as well as replayable traces for all of our
+case studies are available at this URL. I'll end by noting that we do *not*
+believe that these techniques are specific to SDN, and we're currently working
+on applying them to other distributed systems, as well as developing a model
+where we can show how to provide provable guarentees on minimization.
+
+Thanks.

@@ -1,0 +1,135 @@
+Colin Idea:
+- After delta debugging slide, recapitulate Section 4.2. Now, how do we
+  perform this replay? Well, we could just look at timings of inputs. But, as
+  I'll show you later in the eval, that doesn't work. It turns out that we
+  need to consider these internal events, triggered by the control software
+  itself in response to our input events, when choosing when to inject the
+  input events that we control. And that's hard, for a number of reasons...
+  Transition to challenges.
+- More generally, print out paper, and see how you might change things.
+
+--------------- UW Feedback: ----------------
+- Don't say "not performance" in first slide. Or at least explain why not.
+- Forward pointer to how many events are in a trace.
+- "Best practice" somewhat redundant?
+- Replace messy log with "here's a bug", but actualy what the developer sees
+  is this:.. At this point they throw up their hands.
+- Swap order of "our goal / key idea" slides. Or bring key idea slide to
+  beginning.
+- Condense description of challenges. Name them, then say "i'm going to
+  describe them now"
+- Swap order of scope slide: "because it's too late in prod, we use testbeds.
+  But testbeds are hard to debug!"
+- Show subbullets of divergence.
+- Possible way to cut: defer challenges to paper.
+- Either cut examples altogether or explain them.
+- Move tested controllers to methodology slide.
+- Cut non-determinism graph.
+- Cut out case studies we care about.
+- Use a barchart for MCS size.
+- In general: summarize before transitioning. Especially before moving to
+  evaluation.
+- Font size smaller for things we don't want to emphasize (e.g. outline)
+- Simon doesn't like the datacenter picture.
+- Feedback (I don't buy): don't say formalizing
+- Add slide on how much money/time/effort is spent on debugging.
+- Peek() slide is too complicated.
+- MCS formalism slide: stop and say why "not being able to remove event" is
+  important. Because if we can't remove it, the developer should look at it.
+
+----- Arvind feedback ------
+
+- Don't conflate distributed systems and SDN control software, especially near
+  the end.
+- TODO: need to prime the audience more on what events are occuring in the
+  network. Link failure, host migrations, nodes are crashing, configuration changes, etc.
+  (Internal events?)
+- TODO: introduce internal events as part of asynchrony.
+- OK to simplify takeaways from eval slide, especially the negative results.
+
+- TODO(rcs): I'm concerned about the conflation of production / QA testbed.
+- Possible addition: Top-down overview of design before diving into
+  improvements? (Careful: don't want to emphasize system).
+
+----- Google -----
+
+ - Summarize / recap contributions.
+ - What's an SDN?
+ - Make clear that we're running a QA testbed, not production logs.
+ - How is QA testing done?
+ - What assumptions does the testbed make. Show the mechanics of what it's
+   doing, where it fits in..
+ - Definition of naive replay, and make clear that it's not related work.
+ - Make clear that we're trying to maintain original causal dependencies
+   as much as possible. And these causal dependencies are not complete, so we
+   make a best effort.
+ - List of bugs: with one line summary would help.
+ - "We found 7 bugs" -> "We found 3 bugs in floodlight, 2 bugs in X,..."
+ - Show limitations explicitly.
+ - Add back in dialogue about divergence (causal dependencies).
+ - Add slide about what's specific about SDN (answer: nothing!)
+ - What's novel, no related work slide.
+ - Add slide numbers?
+ - How big was the testbed in experiments?
+ - Maybe a timeline of work: (i) before this, people did foo. (ii) we are
+   solving X, (iii) there is still Y left to do.
+
+----- Berkeley -------
+
+- Don't say "try to convince us" too many times
+- Point out that we don't have full visibility. More generally, internal
+  events not clear. Another point: "outside the control of our system", give
+  an example. Clarify "the system", meaning our testbed, vs. the control
+  software itself.
+- Place to introduce that: after "blackbox", we sit in the testbed, but do not
+  look inside the controllers. i.e. we only have viz into messages.
+- "We used fuzzing to find bugs" rather than..
+- Not production logs. So we *do* have full visibility into external events.
+- Break out "testbed" into two slides: what we're given: inputs, with
+  timestamps, and these are partially ordered. But we don't have viz into all
+  internal events.
+- In challenges slide: but as you can probably tell, these are general, and we're working on ..
+- Log scale for bar chart?
+- Mileposts also defined in terms of solution.
+- "Must consider internal events" -> Wait, I thought you aren't looking at
+  internal events.
+- Say that "minimal" is local, and best-effort
+- Really important: "testbed" instead of "system"
+- Distinguish "bug" from invariant violation.
+
+---- Scott Feedback ----
+
+- Crucial point brought up by Scott: Distinguish dd vs. scheduling. This work
+  is about scheduling.
+- Beginning wasn't scripted enough.
+- Blue dots "recall" slide wasn't effective enough. "We're going from this
+  picture to that picture"
+- Add slide, upon explaining QA testbed:
+  In this talk I will assume that the following is in place:
+   - We are given a sequence of inputs.
+   - We are given...
+- Have one datapoint on bar chart go off the slide.
+- Recap slide: "we have first hand evidence that this is a real problem, we
+  worked with real controllers, and we found substantial reductions in the
+  MCS. And moreover, these techniques will be integrated into a real workflow."
+- It feels like an algorithmic talk, but it's not. It's a design talk, we're
+  trying to make this real. That explains the heuristic, and why they're not
+  complete.
+- Space filler: Ahmed in the audience is spending his full time integrating in
+  to QA.
+- Hat tip to Andi
+- Add a slide that shows all citations "Related work"
+
+
+--- Hotel Room -----
+
+ - "Let me restate this."
+ - Have fun.
+ - The goals slide: missing contrast: "instead of first having to sift through
+   the many gigabytes of logs."
+ - Restate on large log file slide: there are gigabytes of events!
+ - Emphasize what our experieinces with industry are: google, nicira,
+   bigswitch.
+ - Separate slide for "why minimizing makes it easier to understand"?
+ - Turn "red x" to script b (i.e. bugs integration)
+ - The integration tests are already minimal, and the test is local machine.

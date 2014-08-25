@@ -1,0 +1,8 @@
+- Does minimization actually help programmers? Why can't I...
+
+- Is the output really minimal?
+
+- What if there are multiple root causes?
+
+- Hasn't this been done before?
+
