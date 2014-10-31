@@ -1,0 +1,9 @@
+ - Distributed systems are challenging
+    - Example of bug
+ - Status quo: troubleshooting by hand.
+ - Our goal: allow developers...
+ - Thesis: possible to ...
+ - Clarification: the idea here is that smaller traces easier to understand...
+ - Outline
+
+TODO: awkward transition through "Here's what SDN control software is"
