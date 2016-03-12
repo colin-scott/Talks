@@ -1,0 +1,124 @@
+- "42% of incoming HTML bytes" - you said "responses"; is this pages or bytes? Can we get numbers on the number of *pages* which is a bit simpler to talk about?
+
+- High res figure of google cloud
+
+- all slides have huge borders -- might want to expand to better use the space
+
+- Disambiguate "performance" and "PLT"
+- Patch paper, re: SDCH ambiguity.
+- Don't want emphasis to be entirely away from compression.
+- Up front: have one slide on compression techniques.
+- Have a screenshot of webp: original page,
+- Redo tables
+- Takeaways fell flat: really have to keep things simple.
+- Another takeaway:
+- Emphasize: optimizations do work (sort of), but there's already a strong
+  tendancy towards multiplexing from having so many users.
+- don't use word "counterintuitive". Definitely not in tussles.
+- Say something different: there's an increasing gap between.. don't state
+  obvious fact (mobile is dominant), instead focus on emerging markets.
+
+- Thought to add: point to interesting stats embedded in the paper.
+- Wording is weak "convinced you that a proxy is needed"
+
+== Q & A ==
+
+Main insight: separate policy from technical. Point out speculation, and say
+that I don't know anything about policy.
+
+- an interesting artefact of our workload data is that most of our volume is
+  coming from developed countries. But the places that we built this for are
+  completely different. even though adoption is highest in emerging, there are
+  still way more users in developing. So all of the performance stats we see
+  are mostly determined by developing . It's a little bit of putting cart
+  before horse, since this is an evaluation of perf in USA.
+
+
+=== Matt ===
+
+Say on title slide that you're a PhD student at Berkeley and you did an internship with the Flywheel team at Google. This is more for the video than it is for the people in the room.
+
+Slide 12 diagram: Looks kind of squashed. Can you redraw this and make it prettier?
+
+Slide 18: Can you make tables native?
+Update numbers for latest results (more like 10% globally now)
+
+Slide 20: "Slightly inflates performance" - you mean "inflates PLT" ... or "degrades performance"
+
+Slide 36 and 37 and 39: "Only *increases* median PLT" ... confused ... a benefit would be a reduction in PLT. Which is it? You seem to say it's an improvement but that would be a degradation.
+
+Slide 39: This is not SDCH. You're describing delta encoding. SDCH is dictionary based and sends content encoded according to the dictionary which has to be pre-built and shipped to the client.  I just realized the paper gets this wrong too. We need to talk here about the dictionary overhead (for the client) and the impact on data reduction overhead (including the overhead). -- > Recommend moving this to backup slides anyway.
+
+Add backup slide on bypass mechanism, blacklisting for illegal content, etc.
+
+=== Tarun ===
+
+GZip -> gzip
+
+At some point, you used the term "Optimized http". Is that same as "Compressed HTTP"? "Optimized" term was never explained.
+
+Sampling bias and holdback discussion: It was hard to follow. May be add some text/figure or just remove it. It seemed too vague also (in the sense that everybody knows we should avoid sampling bias). 
+
+=== Tom ===
+
+Early you explain that we proxy http only (not https). Then the middlebox slide explains that the Chrome <--> Google connection is upgraded to https, except for some cases where the carrier falls back to http. Then slide 19(?) gives a breakdown of http / https / incognito(?) traffic. The term "https" subtley changes meaning -- first you refer to https traffic that is not proxied, then you refer to the secure Chrome/Google connection, then you go back to the original meaning (traffic that is not proxied).
+
+My suggestion: Just after your explain our policy to proxy non-incognito http only, show the breakdown of http / https / incognito traffic, then say that the rest of the talk will focus on proxyable traffic only. (And you might want to recall this table in the Conclusions slide, by giving the overall compression rate including https and incognito pages.)
+
+=== VictorC ===
+
+In terms of adoption, I know you showed the world average, but I was also curious on having the US data for comparison too.
+
+At one point you said "traffic coming in as optimized http" and I parsed that as coming into the FW server from origin sites, so maybe be careful with the wording there.
+
+And as was raised in the discussion: explain a bit about bypass (you mentioned it once with no explanation) and fix the performance vs PLT wording.
+
+=== Ben ===
+
+Everybody knows that mobile is dominating, so you should start with that tone.
+
+Why is cost of data in emerging markets *counterintuitively* the highest? It's intuitive to me because incomes are so low in emerging markets.
+
+You overused the word counterintuitive.
+
+What will happen now that Google will be ranking sites with mobile versions higher? Couldn’t google do the same for compression? e.g., rank compact pages higher in search?
+
+Chrome doesn’t find the closest data center magically. this is via dns and load balancing. Might want to say a sentence on that.
+
+Middleboxes are known to be problematic. how problematic they are in practice is what’s interesting. Do we have data on that?
+
+Why not force encryption always? A school could just manage Chrome’s proxy settings and disable Flywheel.
+
+When is the geographic adoption data from? I thought Google didn’t do business in China currently?
+
+Are the page footprints post compression? How does that graph show that most of the bytes are from large pages?
+
+Should preempt questions about video.
+
+Page load time: spell out transfer time vs round trip time, and path length’s effect on the latter. path length does not equal round trip time.
+
+Why are you telling me about a beta experiment?
+
+The takeaways are kinda lame: engineering is hard? Do proper holdback experimentation? I'd add KISS, because that's the real takeaway for me. Anything complicated is too hard to build and too hard to understand.
+
+The world is going to HTTPS. What then?
+
+=== Piatek ===
+
+https://docs.google.com/document/d/10W_vvxK6tnlTPgt7joyTGxdC_KjnF9KmLALvMoZsgUA/edit
+
+slide 5-6: basically, the "site operators are slow" point -- go faster here.
+this is another uncontroversial point once stated: okay, we can't even get
+GZIP supported, what hope do we have for new technologies that aren't
+universal like SPDY, SDCH, and whatever else we happen to roll out in the next
+release of Chrome? Well, just as we don't expect programmers to unroll
+loops...
+
+nit: s/"we think"/"evidence suggests"/
+
+"Beta experiment" -- need to say what this is. some folks won't know. beta
+channel users. smaller subpopulation that opts into experimental versions of
+Chrome.
+
+"we think" -- say this less. everyone knows everything you say is what you
+think and it makes you sound wishy washy :)

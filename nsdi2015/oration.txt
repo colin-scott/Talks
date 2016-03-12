@@ -1,0 +1,246 @@
+Hello!
+
+I'm Colin, and today I'll be presenting a data compression proxy we've built
+at Google called Flywheel.
+
+As you are probably aware by now, mobile devices are rapidly becoming the dominant mode of Internet access.
+And the places where mobile adoption is growing fastest are in
+emerging markets such as Brazil and India, where the year
+over year growth is as high as 20%.
+
+Unfortunately, the places where mobile is most popular are also where
+data costs are highest. To illustrate this point, here I'm
+showing the cost of a 500 MB prepaid data plan in a variety of countries,
+in terms of the number of hours worked at the average minimum wage in each
+country. <click> You can see that in countries such as Brazil, it would almost require
+a full time minimum wage job to afford a data plan. Such costs are a major barrier
+to use of the Internet in these important markets, and Google has an interest in lowering that barrier.
+
+Today I'll describe Flywheel, a proxy service we built at Google to reduce data usage
+for Chrome users. Flywheel has been deployed at Google for over three years,
+runs on Android, iOS, and desktop,
+and is currently serving millions of users across the world and billions of
+requests per day.
+
+In one slide, here is what Flywheel does. It transcodes all images to the webp
+format, a relatively new size-efficient encoding scheme. We ...
+
+Now I know some of you thinking to yourselves: isn't it a bit odd that we are we sitting here
+listening about HTTP proxies, a technology that had it's heyday when the
+speaker was 5 years old.  <click> While you're partly right that all of the
+optimizations we apply are well-known, the reason we wrote this paper is that
+the VAST MAJORITY of our system design was defined by
+performance artifacts and real-world tussles that were
+unintuitive (at least to us) before we started. For example, we find that compression
+doesn't really matter much for web performance. In this talk I'll focus on
+how these challenges shaped the design of Flywheel.
+
+In the next part of the talk I'll outline why we believe a proxy is the best
+approach to this problem. Later I'll look at the design and evaluation of
+Flywheel, and I'll end the talk by trying to synthesize lessons
+that can be drawn for future systems designers.
+
+Although the number of sites tuned for mobile devices is growing, the majority are not. As
+a case in point, we find that 42% of HTML bytes arriving at Flywheel are not
+GZip compressed, despite nearly universal support for GZip in modern web
+browsers.
+
+If site operators are slow to adopt a well-known optimiziation like GZip,
+newer optimizations, which come out as often as every 6 weeks, have no hope of
+gaining rapid, widespread adoption.
+Consider, for example, the WebP image transcoding or the new HTTP/2 transport protocol.
+Moreover, as the mobile
+devices proliferate, it becomes increasingly difficult for site owners to
+tailor their sites to the latest platforms, such as high-resolution tablets
+requiring higher image quality.
+
+We do not believe that users should need to wait for site owners to catch up to best
+practices. Just as we do not expect programmers to manually unroll loops, we
+should not expect site owners to keep up with an ever-expanding set of web optimizations.
+We argue that the web needs a service that automatically applies
+optimizations that are appropriate for the users' platform.
+
+Having argued for a proxy is most appropriate, I'll now outline the biggest
+challenges we've encountered in building and operating Flywheel,
+
+In designing Flywheel, we need to adhere to a few constraints. First, users
+should not have the service enabled by default. Third, users
+should not be able to perceive any difference in content once they
+turn on the service. Lastly, in the interest of
+privacy and security, no HTTPS traffic should be proxied.
+
+'should be deployed for http only' -- deployed is an awkward word here. maybe applied to HTTP only?
+
+The key challenge we encounter in designing Flywheel is the need to provide
+reasonable performance for end-users. This is difficult because
+the goal of performance is often at odds with the goal of reducing data for
+users. For example, we find that
+for most of users, the RTTs they experience when they connect directly to the
+origin is smaller than RTTs they experience when they forward their requests
+through the nearest Google datacenter. So, we find ourselves needing to decide
+whether should we give up on some data reduction opportunities in order to get
+users better latency. <click> this tradeoff itself isn't too surprising, but
+what is surprising to us is that reducing the size of pages has essentially no
+significant impact on performance! So throughout the design of Flywheel we
+have to keep performance in mind.
+
+Flywheel works pretty much like you would expect. If the client browser is
+connecting to an HTTPS site, it sends the request directly to the origin.
+
+If the client browser is connecting to an HTTP site, it sends its request to
+the nearest Google datacenter. The proxy first checks whether the requested
+object is in cache, and upon a cache miss, send the request to a fetch router,
+which maintains origin affinity by finding the fetch bot that is most likely
+to have an existing TCP connection with the the origin. The fetch bot requests
+the object from the origin, then sends it through a set of optimization
+services. These services include image transcoding, GZip compression, and text
+minification. "it takes orders of magnitude more resources to transcode an
+image than it does to serve a cache hit."
+The response is finally passed to the origin, which sends a copy
+to the cache if it is cacheable, and forwards the reply to the client.
+
+As I mentioned earlier, latency is often at odds with
+compression. Luckily, we do have a mechanism at our disposal to navigate this
+tradeoff. Namely, we can have clients by selective about where they send
+requests. The ideal routing policy would send objects that lie on the
+critical load path directly to the origin, so as to minimize latency, but send
+objects that would benefit greatly from compression through Flywheel. We'll
+come back this mechanism in the evaluation
+
+The final challenge we encounter involves how Flywheel affects the
+operational practices of other stakeholder's on the Internet. We find that downstream
+middleboxes within carrier networks are pervasive. It is generally problematic
+if these middleboxes modify our traffic, for example by serving transcoded images to clients that do not
+understand the transcoding format. By default, we deal with this by using an
+encrpyted connection between clients and Flywheel. For some clients however,
+encryption interferes with network policies. For example, schools need to
+enforce parental filtering. <click> Flywheel needs to be policy-neutral,
+meaning that Flywheel should not be a way to circumvent
+network policies, and without needing to maintain a
+separate policy on behalf of each network we serve.
+The way we achieve neutrality is by giving network operators a mechanism to
+coerce Flywheel users within their network to fallback to HTTP proxy
+connections.
+
+OK, having outlined Flywheel's design, I'll now dive into how well it works in
+practice.
+
+In this talk I'll focus on data reduction and performance. In the paper you
+can find an evaluation of fault tolerance, as well as more details.
+
+As a precursor to the evaluation, it's important to get a sense of what our traffic looks
+like. Here I'm showing the fraction the Chrome mobile users that have opted-in
+to our service, across a sampling of countries. As you can see, adoption rates
+are highest in emerging regions, giving us some indication that we are
+providing benefits to our main target populations.
+
+The bytes received by client browsers fall into three broad categories: HTTP
+bytes optimized by Flywheel, HTTPS bytes directly from origins, and lastly
+bypassed requests and protocols other than HTTP. So it's worth keeping in mind
+that clients see a different view of data reduction than we do at the server.
+
+It's important to note for that the pages requested byte clients are heavily
+skewed in terms of size. Here I'm showing a CDF of the size of pages requests
+by clients in kilobytes. The vast majority of webpages clients request are
+very small in size, less than 500 KB. Then the bulk of bytes consumed
+by clients come from a small number of very large pages in the tail of this
+distribution.
+
+Overall, Flywheel provides an average of 58% data reduction, computed as
+difference between  the sum total of incoming bytes relative to the sum total of
+outgoing bytes, disregarding the cache. The rest of this table breaks down
+where that data reduction comes from by resource type. The main takeaway here
+is that the lion's share of both incoming bytes and compression comes from
+transcoding images to WebP.
+
+Here we also show the distribution of Flywheel's data reduction across individual
+users. So the x-axis here shows our data reduction ratio, and the y-axis is
+a CDF of users. The red-line shows the data reduction for just HTTP traffic
+consumed by each user, and we see that Flywheel provides 50% data reduction
+for the median user. However, it's worth noting again that clients see a
+different view of data reduction than the server by virtue of also consuming
+HTTPS and non-HTTP bytes. Across all traffic, Flywheel provides about 27%
+median data reduction overall.
+
+A general theme of our work is that data reduction is the easy part;
+providing decent performance for users requires much more effort. The way that
+we measure performance is by comparing measurements from random samplings of Flywheel users
+to a holdback experimental group: which is another random sampling of users
+who have opted-in to Flywheel, but have all their requests bypassed. This
+holdback group is crucial for avoiding any sampling bias that would otherwise come from
+comparing against users who have not opted-in to Flywheel.
+
+The key performance metrics we are interested in are: page load time, or the
+time for the onLoad event to fire within the browser; and time to first byte.
+
+Here we show page load time results for 1% of all Flywheel users, shown in
+blue, versus a holdback experimental groups of the same size. The y-axis shows
+us the PLT values in milliseconds, and the x-axis shows us a selection
+quantiles. Note that these quantiles are not evenly spaced; the left most bar
+is the 50th percentile, whereas the rightmost bar is the 99th percentile. For
+most page loads, as we see in the median case, we see that Flywheel increases page
+load time slightly. At the tail end of page loads, past the 90th
+percentile, we see that Flywheel does decrease PLT by at most 9%. We attribute
+this to our workload: recall that the largest pages requests by users can be
+significantly larger than most pages requested by users; in those cases PLT is
+largely determined by transmission delay where
+data reduction helps, rather than propogation delay.
+
+"slightly inflates -- I'd just say for most pages it doesn't matter much. we get a real difference only out in the 99th percentile. and even there, we don't see that much of an improvement. wow!
+"why is this? well, several reasons:
+most page are small (compression doesn't matter)
+even for large pages, some networks are fast (wifi, LTE)
+indirect routing undercuts performance benefits from caching and compression.
+It turns out that we think network latency is the dominant factor for performance.
+more on this next..."
+
+To get a better understanding of why page load time is inflated,
+we look at time to first byte, which is a reasonable proxy for round
+trip time. What we find is that, similar to time to first paint, Flywheel
+increases time to first byte across the board. We attribute this primarily to
+the geographic distribution of Flywheel users. Many users are further away
+from Google datacenters than typical web servers, and more often than not,
+the balance of these factors leads to increased round trip times.
+
+***
+A simple
+yet effective policy is to send only images through Flywheel, which are often
+off the critical path, yet give us the lion's share of our data reduction
+benefits. The main takeaway from applying this policy in practice is that in
+the median case, Fywheel now improves page load time slightly rather than
+harming it.
+I'd mention just quickly that this data is only from the beta channel so this isn't really comparable with the other data.
+
+To end the talk, I'll synthesize lessons that might be applicable for other
+systems designers. The first, most frustrating lesson we learned was
+that many optimizations which seem promising at first, do not pan out at scale
+on real workloads.
+
+As an example, we implemented a preconnect optimization, where we try to
+predict which origins the user is going to connect to in the near future by
+parsing the links in the HTML bytes we stream back to them, and then using
+those predictions to open a TCP connection with the origin early in order to
+remove DNS resolution and TCP handshake from the critical path. This
+optimization was effective at increasing the number of reused TCP connections
+from 73% to 80%, but unfortunately it did not have any substantial effect on
+overall page load time distributions. Because this optimization incurs
+increased load on both our servers and origin servers, we have decided
+not to deploy this optimization to all user traffic.
+
+"WHY didn't it have a large effect? several reasons:
+most connections are already hot! why? because other users. long tail doesn't
+matter much, it seems."
+
+A related optimization we applied is prefetch, where we parse the HTML in
+order to predict which.
+"Most subresource requests are not on the critical path -- they aren't the main HTML or the final few requests from JS -- they are all in the meat of the pageload where many requests are outstanding. so, there's often other work to do with the network link.
+
+Another takeway from our work is that, dealing with tussles of this kind I
+described earlier in the talk consume significant engineering effort.
+
+To conclude, in this work we showed that it's possible to provide 58% average
+data reduction at web scale. A general theme of our work is
+that data reduction is the easy part; dealing with geodiverse users, transient
+failures, and unpredictable middleboxes consume most of our effort.
+
+Thank you!

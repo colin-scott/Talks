@@ -1,0 +1,2 @@
+- Should I frame the talk as Chrome-specific?
+- Backup slides on bypass, etc.

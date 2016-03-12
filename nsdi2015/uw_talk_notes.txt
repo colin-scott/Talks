@@ -1,0 +1,93 @@
+== Anna ==
+
+A couple bits of feedback:
+- I really liked how well you structured and signposted your talk. Usually being late to a systems talk really hurts my understanding, but you did such a good job of laying out the key questions as you went along that I felt mostly able to catch up.  Bringing out the key lessons at the end also felt valuable.
+- At the end I was left with some possibly basic questions about what lessons to draw regarding this interaction between web and mobile devices.  Is it likely that future compression algorithms (or other advances) will yield more data savings?  Will the page-load tradeoffs be similar?  Or are the kinds of things people are downloading on mobile browsers just not well suited to the types of compression that exist (or are likely to exist)?  To the degree that any of those are well-formulated, maybe they belong in your lessons?
+
+== Xi ==
+
+one high level comment was that it's better to restructure the talk to
+put challenges and problems (as well as your main findings) in the
+first few slides---it's harder to get ppl's attention after that.  the
+current version seems to mix the problems and solutions every where.
+
+== Ed ==
+
+3:04
+
+Slide before the Scott Shenker slide:  Cannot read the savings shown on the phone – 
+too small.  Also, maybe find a screen that shows the average 58% reduction?
+
+Slide 9 – what does “Browsers updated every 6 weeks” have to do with the point of 
+the slide?  Not clear.
+
+Slide 16: 10 minutes into the talk at this point.
+
+Slide 20:  Maybe delete the “worldwide” adoption % - doesn’t help make the point
+
+Slide 31:  You said propagation delay is what causes this effect. Is there any role of 
+compression/decompression?
+
+Slide 36:  20 minutes into the talk at this point.
+
+Slide 37: “Only yields a 1-2% increase in median PLT” But is an increase in PLT 
+good??
+
+Slide 38: Same question – is an increase in PLT an improvement?
+
+Slide 41:  can you say something about the average savings?  In other words, 58% 
+decrease in http, but http is not the only traffic.
+
+Slide 41:  24 minutes at this point.
+
+== Piatek ==
+
+"what flywheel does in one slide" -- this is a search results page which would be served over HTTPS so Flywheel wouldn't actually apply here!
+
+'should be deployed for http only' -- deployed is an awkward word here. maybe applied to HTTP only?
+
+optimization services figure / animation -- could go a little faster here if you need time. not too much faster, but a little :)
+
+"does not have a negligible effect" -- tough to parse the negations in this phrase
+
+'need to be policy neural' / mechanism HTTP fallback -- might want to highlight this text with a callout. 
+
+wallclock: 3:15 -- maybe 10m -- ish. (we started late)
+
+data reduction table -- looks much better as a real table!
+
+nit: highlight the whole cell/row when you highlight? not sure if this will improve the appearance, but maybe
+
+'Reduction Across Users' slide
+HTTP traffic -- put a box around the legend in this and subsequent graphs. looks better, is consistent with other figs
+**** FIX LABELS *** (on the first graph only?)
+
+"ROUGHLY THE SAME SIZE" -- the holdback isn't the same size as the set of flywheel users, it's the same size as the random subset of the population used to compare against the holdback :)
+-- and, we ensure that the distribution of the comparison group is largely identical to the distribution of the overall population so we know the size of the holdback is large enough to provide a meaningful comparison.
+(folks may press you on the evaluation methodology so do try to internalize this.)
+
+'why is this?' -- this section is working a lot better now. wahoo!
+
+nit: the second blue arrow (for most pages are small) should be aligned to the baseline of the text, just like the 'long tail of large pages' blue arrow above, which looks better.
+
+wallclock: 3:23 -- selective proxying
+
+"we find that users care more about data savings than performance" -- it's tough to say this with confidence. what we do know is that users have explicitly signaled a preference for compression, so we try to maximize that. especially since our target markets are paying real money for this. 
+
+preconnect: 3:25
+
+nit: 1-2% -- just say less than 2%. giving a range just creates confusion.
+
+"the reason we think this doesn't work very well" --> this is interested, but again, not on a slide! put on slide somewhere!
+
+conclusion: 3:28
+still need to shave a minute or two.
+
+q&a:
+selective proxying: don't speculate! we can't answer this tail latency question because the results aren't comparable, which you said. stick to that!
+https: standard question. You might mention that there's nothing technically that prevents proxying HTTPS. We just don't do it because product decision.
+https percentage?: backup slide? maybe not, you can just say this
+video: all the questions we predicted :)
+what's the impact of selective proxying? -- need to remind that this isn't actually deployed for production users.
+
+

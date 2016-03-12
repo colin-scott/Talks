@@ -1,0 +1,189 @@
+==== RICON ====
+
+TODO(cs): have a running example?
+
+- Please feel free to interrupt me throughout.
+- Let me introduce you to Alex Yip.
+- His job: chief debugger. He was assigned the bugs that noone else could
+  figure out. He quite literally spent all of his time debugging.
+- Why? Because he was one of the few engineers at the
+  company who could fit enough complexity in his head to be able to understand
+  which part of their systems interacted to cause the bug.
+- They had a never-ending stream of bugs, in part because they had a
+  top-notch QA team, but mainly because the distributed system they
+  were building was highly complex, needed to be resilient to nearly arbitrary
+  failures, asynchrony, concurrency, etc.
+- He was handed a set of console logs, and a description of the distributed
+  system was configured at boot time.
+- Often, these logs were several GBs large, since the system might have been
+  running for several hours before the bug manifested.
+- If Alex was lucky, the console logs would contain a stack trace that would
+  lead him immediately to the root cause of the bug. Or, he might be able to
+  just look at the last few events in the logs right before the bug
+  manifested, to be able to understand why the system had arrived at this
+  state.
+- But often, Alex was not so lucky. For example, if the bug
+  involved particular interleavings of concurrent messages, or the interplay
+  of multiple failures, Alex would need to find events in the middle of
+  these multigigabyte logs that eventually lead the system to a buggy state.
+[ Show a ShiViz with many events? ]
+- His main tools:
+  - grep
+  - the intuition of his MIT-educated brain
+- It was not uncommon for Alex to take more than a week to find the root cause of
+  a bug, if he managed to find it at all.
+- other developers
+  according to some studies spend on average of
+  50% of their time troubleshooting and debugging.
+- And from what I saw at Google, Amazon, the way they do troubleshooting is
+  not much different.
+- Ask them a question -> does this resonate with you.
+- Our goal: allow developers to focus on fixing the underlying bug (not
+  troubleshooting)
+- Do this by automatically identifying a minimal sequence of events that
+  triggers the bug. [blackbox manner?] [essentially what the developer would
+  have done anyway]
+- Our claim is that the
+  minimized trace should take much less time to understand, so that highly
+  paid developers can spend their time on more important tasks.
+
+--- how do we do it? ---
+
+- Model of dist'sys, briefly. Incidentally, those of you who have worked on
+  Riak or Erlang should be familiar with this: it's called the actor model.
+- Collection of N processes
+- Defn of message
+- Configuration
+- Step (internal)
+- Step (external)
+- God sees a total order of steps: schedule
+- Invariants [example from Riak?]
+
+TODO(cs): show where we obtain requistes (fuzzing tool), or describe naive approach to problem?
+
+---- Requisites -----
+
+- We interpose on the RPC library.
+- We focus on a particular RPC library right now: Akka.
+- Show diagram of Akka.
+- Normally, Akka...
+- We interpose.
+- Every time a process sends a message, we place it in a buffer. Later, we get
+  to decide when to deliver it.
+- In Akka, timers are modeled as special messages delivered to the sender at
+  some later point in the execution. so we treat these as any other
+  messages.
+- Now we get a total ordering of all events in the system. We get to play god.
+- We use this interposition to do fuzz testing.
+  - We inject external events: failures, external messages
+  - We choose a random ordering of internal messages to deliver.
+  - We record this total ordering, and save it to disk.
+
+-> Demonstration! Or perhaps just point them to the blog post.
+
+---- Approach -----
+
+- Problem statement
+  - Assume we're given requisites...
+- Secondary: minimize internals
+
+- General approach
+- Problem: intractable!
+- So, split problem into subparts:
+  - Delta debugging
+  - But, for each external event subsequence, still need to figure out if
+    there are any schedules that only contain those external events, which is
+    the same problem we started with.
+  - Spread a fix time budget across each subsequence.
+  - One idea here: Enter DPOR: show diagram of commutativity
+  - OK, good, but not still intractable.
+  - So we prioritize our exploration of the space. We should pick schedules
+    that we think will be the mostly likely to trigger the same invariant
+    violation.
+  - How do we prioritize it? Our key insight is that we should stay close (in
+    terms of causal structure) to the original schedule, since we know that
+    schedule triggered the bug.
+    - For each step s from original:
+      - If s is pending during replay:
+        inject
+    ( N.B. we ignore any pending messages that do not match original )
+  - Issue: some message fields may have changed since the last run. Consider
+    sequence number
+  - So, one thing the application developer might do is message fingerprints
+  - Or, just go directly to message types.
+TODO(cs): describe history-dependence?
+  - And: when there a multiple pending messages that match, backtrack so we
+    choose all combinations.
+  - Lastly, if possible, shrink contents of external messages (RAft cluster
+    size)
+  - After delta debugging is done pruning externals, we move on to minimizing
+    internals, i.e. seeing how many of them we can not delivery, yet still
+    trigger the bug. We do this with the same techniques.
+
+TODO(cs): describe non-determinism?
+
+- this works pretty well. (Show histogram)
+- Here's one such minimization. ShiViz.
+-> Second demonstration? Using ShiViz this time.
+- I'm really optimistic that this kind of technique should apply successfully
+  to lots of distributed systems. Talk to me afterward if you'd like to chat
+  about how you might apply these techniques to your system.
+
+===== UW, STS1 =====
+
+- dist' sys are complex, challenging
+- dist' sys are bug prone
+- example bug
+- best practice: logs
+- our goal: save devs time
+- problem statement
+- why minimization?
+- MCS, formally
+- recall that we're trying to find it among...
+--- how do we do it? ---
+- Assume we're given
+- where we obtain requisites (QA testbed)
+- Approach: ddmin
+- ddmin vs scheduling
+- Challenges:
+  - Asynchrony
+    - interpose
+  - divergence
+    - peek
+  - non-determinism
+    - replay multiple times
+--- how well does it work? ---
+  - Methodology
+  - Histograms
+  - Vs. Naive replay
+  - Qualitative results
+
+==== half-baked ====
+
+- motivation in <60s
+- Collection of N processes
+- Defn of message
+- Configuration
+- Step (internal)
+- Step (external)
+- Schedule & execution
+- Invariants
+- Problem statement
+- Secondary: minimize internals
+- General approach
+- Problem: intractable!
+- Research Agenda
+  - heuristics
+  - experiment
+  - formalism
+- Contributions vs previous paper
+- New Tool (akka, actors)
+- System target
+- Example bug
+- Previous heuristics
+- Suboptimal!
+- Edit distance
+- Evaluation methodology
+- Program properties
+  - Adversaerial model
+- Stop gap: fairness

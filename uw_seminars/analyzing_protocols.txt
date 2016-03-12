@@ -1,0 +1,14 @@
+Symbolic Execution:
+  - General technique for enumerating the possible executions of a program
+  - Way it works: mark all inputs as symbols.
+  - For every conditional in the program, ask a constraint solver.
+  - very broad technique.
+
+This paper:
+  - Focus on one particular type of bug: interoperability.
+  - Is there a message emmited by sender that is rejected by receiver?
+  - Requires a bit of annotation from the user to know what is rejected.
+
+Two contributions:
+   - `Joint analysis'
+   - heuristics for searching the exponential space.

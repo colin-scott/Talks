@@ -1,0 +1,19 @@
+To add?
+- Viewpoint into modern web traffic? E.g., HTTPS increase over time.
+- How much SPDY helps.
+- Redundancy elimination?
+- Picking WebP quality.
+- Alternate designs: VPNs, transparent proxies, agressive optimizations.
+- middlebox tampering
+- Safe Browsing?
+
+Improvements:
+- "On the whole, the contribution of individual mechanisms varies significantly based on characteristics of clients and sites."
+- In the desktop environment, we solve these issues with massive
+  overprovisioning.
+
+Possible discussion points:
+- Implications for bandwidth pricing?
+- Negative result: geodistribution, even in US, doesn’t really help latency.
+- Negative result: PLT as a metric.
+- Link header is better than SPDY push?

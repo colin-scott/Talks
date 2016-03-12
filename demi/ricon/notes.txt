@@ -1,0 +1,5 @@
+ - Q for Scott: introduction not fast punched enough?
+ - Q for Scott: how to solicit request for feedback? on motivation
+ - Q for Scott/Arvind: Mention DPOR in the RICON talk?
+ - Emphasize that external events are within 7+=2 events. Internals longer,
+   but that's ok, most are normal bootstrapping messages.
